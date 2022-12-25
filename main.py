@@ -197,6 +197,12 @@ async def rank_students(pwd):
 
         students_collection = db.students
         cursor = list(students_collection.find({}))
+
+        if not cursor:
+            collection = db.ranked
+            collection.drop()
+            return {"message": "There are no documents in this collection now!"}
+
         cursor.sort(key=lambda x: -x["cgpi"])
         new = []
         for student in cursor:
