@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 from pymongo import MongoClient
 import scrapper
-import os
 from scrapping_info import currently_enrolled, batches_enrolled, branches, branch_code, branch_code_18
 
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,7 +14,7 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +25,8 @@ password = os.getenv('PASSWORD')
 
 client = MongoClient(connection_string)
 db = client.nith_results
+
+
 # print(list(db.students.find({"roll": "195536"}))[0])
 
 
@@ -32,10 +35,24 @@ def index():
     return {"message": "Welcome To NIT-H Result API"}
 
 
-@app.get("/students")
-async def get_all_students():
+@app.get("/students/")
+async def get_all_students(sem=None, branch=None):
+    query = {}
+    if sem and (int(sem) < 1 or int(sem) > 10):
+        return {"message": "incorrect semester number"}
+
+    if branch and branch not in branches:
+        return {"message": "incorrect branch name"}
+
     students_collection = db.ranked
-    cursor = students_collection.find({}, {
+    if sem and branch:
+        query = {'semester': int(sem), 'department': branch}
+    elif sem:
+        query = {'semester': int(sem)}
+    elif branch:
+        query = {'department': branch}
+
+    cursor = students_collection.find(query, {
         "_id": 0,
         "roll": 1,
         "name": 1,
@@ -93,7 +110,7 @@ async def remove_batch(pwd, year):
     return {"error": "incorrect password"}
 
 
-@app.post("/add_student/{pwd}/{branch}/{roll}")
+@app.post("/scrap/{pwd}/{branch}/{roll}")
 async def add_student(pwd, roll, branch):
     if branch not in branches:
         print(branch)
@@ -126,8 +143,10 @@ async def rank_students(pwd):
         # class_rank
         # branch_rank
         ranks = {
+            # college rank
             "college_rank": 1,
 
+            # class ranks
             "181": 1,
             "182": 1,
             "183": 1,
@@ -189,6 +208,7 @@ async def rank_students(pwd):
             "22bma": 1,
             "22bph": 1,
 
+            # branch ranks
             "civil": 1,
             "electrical": 1,
             "mechanical": 1,
